@@ -1,4 +1,5 @@
 use ndarray::{Array1, Array2};
+use rayon::str::Bytes;
 use std::collections::HashMap;
 use std::fs::File as StdFile;
 use std::io::{BufReader, BufWriter, Read, Seek, Write};
@@ -109,7 +110,6 @@ pub fn create_replacement_map(
         .map(|((x, y), &value)| (x, y, value))
         .collect();
     combination_rank.sort_unstable_by_key(|(_, _, value)| std::cmp::Reverse(*value));
-    println!("All sorted combinations: {:#?}", combination_rank);
     let replacement_map: HashMap<(char, char), char> = final_unused
         .indexed_iter()
         .filter(|(_index, &value)| value == 0)
@@ -125,6 +125,18 @@ pub fn create_replacement_map(
     return replacement_map;
 }
 
+fn information_saver(map: &HashMap<(char, char), char>) -> Vec<u8> {
+    let mut bytes_vec: Vec<u8> = Vec::with_capacity(map.len() * 3 + 1);
+    bytes_vec.push(map.len() as u8);
+    map.iter().for_each(|(&(value1, value2), &key)| {
+        bytes_vec.push(key as u8);
+        bytes_vec.push(value1 as u8);
+        bytes_vec.push(value2 as u8);
+    });
+
+    return bytes_vec;
+}
+
 pub fn writer(
     input: String,
     output: String,
@@ -135,6 +147,10 @@ pub fn writer(
     let mut reader = BufReader::new(input);
     let output = StdFile::create(output).expect("could not create output file");
     let mut writer = BufWriter::new(output);
+
+    writer
+        .write_all(&information_saver(&replacement_map))
+        .expect("Could not open file");
 
     let mut buffer = Vec::new();
 
